@@ -175,6 +175,80 @@ Each report folder should contain:
 - NTP-synced system clocks
 - Screenshot with visible timestamp
 
+## Fitness App Intelligence (Strava, etc.)
+
+**Strava API Capabilities:**
+- `GET /segments/explore` - Search segments by geographic bounding box [south_lat, west_lng, north_lat, east_lng]
+- `GET /segments/{id}` - Segment details including start/end coordinates, athlete count, effort count
+- Leaderboard endpoint (`/segments/{id}/leaderboard`) returns 403 without premium/partner API access
+
+**OSINT Value:**
+- Segments near POIs can identify athletes who frequent specific locations
+- "Local Legend" feature shows most active recent users on each segment
+- Polyline data (Google encoded format) enables precise route mapping
+- Segment effort counts indicate foot/bike traffic patterns
+
+**Limitations (as of 2026-02):**
+- Leaderboard/effort history requires Strava Metro or partner API tier
+- Date-filtered queries need enhanced access
+- Rate limit: 200 requests/15 min, 2000/day
+
+**Best Practices:**
+- Define tight bounding boxes around POI (0.01° ≈ 1km)
+- Search both `riding` and `running` activity types
+- Cross-reference segment names for location hints (e.g., "Kraftwerksblick" = power plant view)
+- Archive polyline data for overlay mapping
+
+**Tool:** `execution/strava_geo.py`
+
+---
+
+## Sports Tracker
+
+**API Base:** `https://api.sports-tracker.com/apiserver/v1/`
+
+**Authentication:**
+- Header: `STTAuthorization` with session token
+- Login endpoint: `POST /login` with `l=email&p=password`
+- Token persists until password change
+
+**Endpoints (authenticated only):**
+- `GET /workouts` - User's workouts list
+- `GET /workouts/{key}` - Workout details with GPS
+- `GET /workouts/{key}/exportGpx` - GPX export
+
+**Limitations (as of 2026-02):**
+- No public API - all endpoints require auth
+- No geographic search for other users' workouts
+- No heatmap/explore API exposed
+- Rate limits undocumented
+
+**Tool:** `execution/sports_tracker_geo.py`
+
+---
+
+## OpenStreetMap GPS Traces
+
+**API:** `https://api.openstreetmap.org/api/0.6/trackpoints`
+
+**Parameters:**
+- `bbox=west,south,east,north` (lon,lat,lon,lat format)
+- `page=N` for pagination
+
+**Data Available:**
+- Anonymous trackpoints (lat/lon only, no timestamps)
+- Public named traces via web interface
+- GPX downloads for specific traces
+
+**OSINT Value:**
+- Shows paths people actually take (vs theoretical routes)
+- Useful for understanding terrain and access routes
+- Limited for temporal analysis due to anonymization
+
+**Tool:** `execution/osm_gps_traces.py`
+
+---
+
 ## Continuous Learning
 
 **Update This SOP When:**
@@ -192,4 +266,4 @@ Each report folder should contain:
 ---
 
 *Last Updated: 2026-02-03*
-*Version: 2.0*
+*Version: 2.2 - Added Sports Tracker and OpenStreetMap GPS Traces sections*
