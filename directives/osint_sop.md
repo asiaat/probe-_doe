@@ -1,0 +1,195 @@
+# OSINT SOP
+
+This file tracks technical challenges, anti-scraping measures, and OSINT tradecraft findings.
+
+## Report Management
+
+**Directory Structure:**
+- All OSINT reports must be saved into separate folders under `reports/`
+- Folder naming convention: `reports/YYYYMMDD_HHMMSS_<target_identifier>/`
+  - Example: `reports/20260203_143022_company_xyz/`
+  - Example: `reports/20260203_150815_person_johndoe/`
+
+**Report Contents:**
+Each report folder should contain:
+- `summary.md` - Executive summary and key findings
+- `raw_data/` - Unprocessed scraped data, screenshots, archives
+- `processed/` - Cleaned datasets, analysis outputs
+- `sources.txt` - Complete list of URLs and sources consulted
+- `timeline.md` - Chronological event reconstruction (if applicable)
+- `metadata.json` - Collection metadata (timestamps, tools used, operators)
+
+## Encoding
+
+**Character Set Handling:**
+- Always check for Cyrillic and other non-UTF-8 encodings (windows-1251, ISO-8859-5, KOI8-R)
+- Test with `chardet` library before processing
+- Common encodings by region:
+  - Russian/Ukrainian: windows-1251, KOI8-R
+  - Western European: ISO-8859-1, windows-1252
+  - Asian: Shift-JIS, GB2312, Big5
+- Save all raw content in original encoding + UTF-8 conversion
+
+## Anti-Scraping Countermeasures
+
+**User-Agent Rotation:**
+- Maintain pool of realistic desktop/mobile user agents
+- Rotate per request or per session based on target sensitivity
+- Match user-agent to accept headers and TLS fingerprint
+
+**Rate Limiting:**
+- Implement exponential backoff (1s, 2s, 4s, 8s...)
+- Randomize delays between requests (jitter)
+- Respect robots.txt where appropriate (or note violations)
+- Monitor for 429/503 responses
+
+**Session Management:**
+- Rotate IP addresses for sensitive targets (proxy pools, VPN, Tor)
+- Clear cookies between collection runs
+- Use separate browser profiles for different personas
+
+**WAF Detection & Bypass:**
+- Common WAFs: Cloudflare, Akamai, Imperva, AWS WAF
+- Indicators: challenge pages, 403 with specific headers, JavaScript challenges
+- Bypass techniques:
+  - Render JavaScript with Playwright/Selenium
+  - Solve challenges with undetected-chromedriver
+  - Use residential proxies for high-value targets
+  - API endpoints often have weaker protection than web UI
+
+**Tracking Findings:**
+- Document each new WAF behavior in this section
+- Note successful bypass techniques with timestamps
+- Mark techniques that stop working (defenders adapt)
+
+## Google Dorking
+
+**Advanced Search Operators:**
+- `site:` - Limit to specific domain or TLD
+  - `site:gov` or `site:.gov` for government sites
+  - `site:example.com -www` exclude www subdomain
+- `inurl:` - Search within URL
+  - `inurl:admin` or `inurl:login`
+- `intitle:` / `allintitle:` - Search page titles
+  - `intitle:"index of"` for open directories
+- `intext:` / `allintext:` - Search body text only
+- `filetype:` - Specific file types
+  - `filetype:pdf`, `filetype:xlsx`, `filetype:sql`
+- `cache:` - View Google's cached version
+- `related:` - Similar websites
+- `link:` - Pages linking to URL (deprecated but sometimes works)
+- `-` - Exclude terms
+- `""` - Exact phrase match
+- `*` - Wildcard
+- `OR` / `|` - Boolean OR
+- `..` - Number range (e.g., `2020..2023`)
+
+**Effective Combinations:**
+- Exposed documents: `site:target.com filetype:pdf confidential`
+- Open directories: `intitle:"index of" site:target.com`
+- Login pages: `site:target.com inurl:admin OR inurl:login`
+- Leaked credentials: `site:pastebin.com "target.com" password`
+- Subdomains: `site:*.target.com -www`
+- Email patterns: `site:target.com "@target.com" filetype:txt`
+- Tech stack: `site:target.com "powered by" OR "built with"`
+- Error messages: `site:target.com intext:"sql syntax" OR intext:"warning"`
+
+**Other Search Engines:**
+- **Bing**: Better for office documents, use `ip:` operator
+- **Yandex**: Superior for Russian/Cyrillic content, facial recognition
+- **DuckDuckGo**: Aggregates results, `!bangs` for specific sites
+- **Shodan**: IoT/server search, use filters like `org:"Company"` or `product:"Apache"`
+- **Censys**: Certificate transparency, TLS/SSL intelligence
+- **Archive.org**: Wayback Machine for historical data
+
+## Source Verification
+
+**Primary vs Secondary Sources:**
+- Prioritize: Official registries, government databases, corporate filings
+- Corroborate: Cross-reference minimum 3 independent sources
+- Document: Chain of custody for all critical findings
+
+**Red Flags:**
+- Single-source claims
+- Circular reporting (A cites B, B cites A)
+- Anonymous sources without verification
+- Inconsistent dates/details across sources
+- Recent domain registration for "news" sites
+
+## Metadata Analysis
+
+**File Metadata:**
+- Extract EXIF from images (GPS, camera, timestamps)
+- Office doc metadata (author, organization, edit history)
+- PDF metadata (creator software, modification dates)
+- Use `exiftool` for comprehensive extraction
+
+**Web Metadata:**
+- WHOIS records (historical via SecurityTrails, DomainTools)
+- DNS records (subdomains, mail servers, historical changes)
+- SSL certificates (Subject Alternative Names for subdomain discovery)
+- IP geolocation and ASN information
+
+## Social Media Intelligence (SOCMINT)
+
+**Platform-Specific Techniques:**
+- **LinkedIn**: Employee enumeration, org charts, technology stack
+- **Twitter/X**: Geolocation via tweets, network mapping, sentiment analysis
+- **Facebook**: Graph search (if still available), event OSINT
+- **Instagram**: Location tags, image reverse search
+- **GitHub**: Code leaks, employee accounts, technology discovery
+- **Reddit**: Sentiment, community intelligence, historical posts (Pushshift)
+
+**Tools:**
+- Sherlock: Username enumeration across platforms
+- Social-Analyzer: Profile discovery and analysis
+- Twint: Twitter scraping (check if still functional)
+- InstaLoader: Instagram archival
+
+## Operational Security (OPSEC)
+
+**Attribution Avoidance:**
+- Use VPN/Tor for sensitive collections
+- Separate browser profiles with consistent fingerprints
+- Never use personal accounts for reconnaissance
+- Disable WebRTC, canvas fingerprinting
+- Consider time zone correlation (search during target's business hours)
+
+**Legal Considerations:**
+- Document legal basis for collection (public data, consent, etc.)
+- Respect GDPR, CCPA, local privacy laws
+- No unauthorized access (CFAA violations)
+- Avoid social engineering without authorization
+- Maintain audit trail for compliance
+
+## Archival & Chain of Custody
+
+**Immediate Capture:**
+- Screenshot critical findings (full page + URL visible)
+- Archive pages (archive.is, archive.org)
+- Save raw HTML source
+- Hash files for integrity (SHA-256)
+
+**Timestamping:**
+- RFC 3161 timestamps for legal contexts
+- NTP-synced system clocks
+- Screenshot with visible timestamp
+
+## Continuous Learning
+
+**Update This SOP When:**
+- New WAF behavior discovered
+- Successful bypass technique validated
+- Search operator combination proves effective
+- Tool becomes deprecated or non-functional
+- Legal/regulatory landscape changes
+
+**Version Control:**
+- Document changes with date and reason
+- Preserve historical techniques even if deprecated
+- Tag major revisions
+
+---
+
+*Last Updated: 2026-02-03*
+*Version: 2.0*
