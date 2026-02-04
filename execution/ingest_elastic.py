@@ -5,20 +5,40 @@ import logging
 from datetime import datetime
 from elasticsearch import Elasticsearch, helpers
 
-# Setup logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler(f"logs/ingest_{datetime.now().strftime('%Y%m%d')}.log")
-    ]
-)
+def setup_logging():
+    """Initialize logging with automatic directory creation."""
+    log_dir = "logs"
+    os.makedirs(log_dir, exist_ok=True)
+    
+    log_file = os.path.join(log_dir, f"ingest_{datetime.now().strftime('%Y%m%d')}.log")
+    
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(levelname)s - %(message)s",
+        handlers=[
+            logging.StreamHandler(),
+            logging.FileHandler(log_file)
+        ]
+    )
+
+# Initialize logging
+setup_logging()
 
 def load_env():
+    """Load environment variables from .env file in current or parent directory."""
     env_vars = {}
-    if os.path.exists(".env"):
-        with open(".env", "r") as f:
+    
+    # Try current directory first, then parent directory
+    env_paths = [".env", "../.env"]
+    env_file = None
+    
+    for path in env_paths:
+        if os.path.exists(path):
+            env_file = path
+            break
+    
+    if env_file:
+        with open(env_file, "r") as f:
             for line in f:
                 line = line.strip()
                 if line and not line.startswith("#"):
@@ -27,6 +47,7 @@ def load_env():
                         env_vars[key] = value
                     except ValueError:
                         pass
+    
     return env_vars
 
 def get_es_client(env):
@@ -223,6 +244,12 @@ def ingest_directory(base_dir, es, index_prefix):
 def main():
     try:
         env = load_env()
+        
+        # Debug: Show loaded environment variables
+        logging.info(f"Loaded .env file with {len(env)} variables")
+        es_host = env.get("ES_HOST", "http://localhost:9200")
+        logging.info(f"Connecting to Elasticsearch at: {es_host}")
+        
         es = get_es_client(env)
         
         if not es.ping():
@@ -230,7 +257,16 @@ def main():
             return
 
         index_prefix = env.get("ES_INDEX_PREFIX", "osint_")
-        ingest_directory("reports", es, index_prefix)
+        
+        # Find reports directory (current or parent directory)
+        reports_dir = "reports" if os.path.exists("reports") else "../reports"
+        
+        if not os.path.exists(reports_dir):
+            logging.error("Could not find reports directory")
+            return
+        
+        logging.info(f"Scanning {reports_dir} for data...")
+        ingest_directory(reports_dir, es, index_prefix)
         
     except Exception as e:
         logging.error(f"Fatal error: {e}")

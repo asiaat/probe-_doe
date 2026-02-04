@@ -15,6 +15,9 @@ Convert disparate OSINT data (JSON, MD, TXT, PDF, images) into structured intell
 1. **Create workspace structure:**
 ```
    reports/YYYYMMDD_HHMMSS_<target>/
+   ├── raw_data/            # Raw web search results (JSON), API responses
+   │   ├── web_search_<topic>_YYYYMMDD_HHMMSS.json
+   │   └── api_response_<source>_YYYYMMDD_HHMMSS.json
    ├── 00_raw/              # Untouched original files
    │   ├── json/
    │   ├── documents/
@@ -33,8 +36,14 @@ Convert disparate OSINT data (JSON, MD, TXT, PDF, images) into structured intell
    │   └── notes/           # Analyst notes by date
    ├── 03_visualizations/   # Charts, graphs, maps
    ├── 04_deliverables/     # Final reports
-   └── metadata.json        # Collection metadata
+   ├── metadata.json        # Collection metadata
+   ├── sources.txt          # Complete source list
+   ├── summary.md           # Executive summary
+   └── timeline.md          # Chronological reconstruction
 ```
+
+**Note:** The `raw_data/` directory is **mandatory** and must contain JSON files for all web searches performed during the investigation. See OSINT SOP for detailed JSON schema requirements.
+
 
 2. **Generate manifest:**
    - Create `00_raw/manifest.txt` listing all files with:

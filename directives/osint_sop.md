@@ -13,11 +13,28 @@ This file tracks technical challenges, anti-scraping measures, and OSINT tradecr
 **Report Contents:**
 Each report folder should contain:
 - `summary.md` - Executive summary and key findings
-- `raw_data/` - Unprocessed scraped data, screenshots, archives
+- `raw_data/` - Unprocessed scraped data, screenshots, archives, **raw web search results as JSON**
 - `processed/` - Cleaned datasets, analysis outputs
 - `sources.txt` - Complete list of URLs and sources consulted
 - `timeline.md` - Chronological event reconstruction (if applicable)
 - `metadata.json` - Collection metadata (timestamps, tools used, operators)
+
+**Raw Source Data Requirements:**
+- **ALL web searches must be saved as JSON files** in `raw_data/` directory
+- Naming convention: `web_search_<topic>_YYYYMMDD_HHMMSS.json`
+  - Example: `web_search_events_20260204_151731.json`
+  - Example: `web_search_social_media_20260204_151900.json`
+- Each JSON file must contain:
+  - `search_query` - Exact query string used
+  - `search_timestamp` - ISO 8601 timestamp (YYYY-MM-DDTHH:MM:SS+TZ)
+  - `search_method` - Tool/API used (e.g., "Google Vertex AI Web Search")
+  - `results_summary` - Brief summary of findings
+  - `key_findings` - Structured data extracted from results
+  - `sources` - Array of source URLs
+  - Additional structured data relevant to the search
+- **Purpose:** Enables data persistence to Elasticsearch, reproducibility, and audit trail
+- **Compliance:** Required for all OSINT investigations per persistence SOP
+
 
 ## Encoding
 
