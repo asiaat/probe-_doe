@@ -59,6 +59,7 @@ import argparse
 
 def main():
     parser = argparse.ArgumentParser(description="Fetch news articles using NewsAPI.ai")
+    parser.add_argument("--query", help="Search query for news articles", default="Vulkangruppe")
     parser.add_argument("--output-dir", help="Directory to save the output JSON", default=".tmp")
     args = parser.parse_args()
 
@@ -70,7 +71,7 @@ def main():
         log_execution("fetch_news.py", {}, "FAILURE", "Missing API Key")
         return
 
-    query = "Vulkangruppe"
+    query = args.query
     print(f"Fetching up to 100 articles for '{query}'...")
     
     data = fetch_news(api_key, query, count=100)
@@ -83,7 +84,8 @@ def main():
         # Save to output directory with timestamp per SOP
         os.makedirs(args.output_dir, exist_ok=True)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_file = f"{args.output_dir}/news_vulkangruppe_{timestamp}.json"
+        sanitized_query = "".join(c if c.isalnum() else "_" for c in query)[:30]
+        output_file = f"{args.output_dir}/news_{sanitized_query}_{timestamp}.json"
         
         with open(output_file, "w", encoding="utf-8") as f:
             json.dump(articles, f, indent=2, ensure_ascii=False)
