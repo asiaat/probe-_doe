@@ -184,6 +184,7 @@ def ingest_directory(base_dir, es, index_prefix):
                             action = {
                                 "_index": index_name,
                                 "_id": doc.pop("_id"), # Use generated ID
+                                "_op_type": "create",  # Skip duplicates instead of updating
                                 "_source": doc
                             }
                             docs_to_index.append(action)
