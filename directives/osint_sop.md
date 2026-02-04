@@ -249,6 +249,34 @@ Each report folder should contain:
 
 ---
 
+## OpenStreetMap POI/Infrastructure Analysis
+
+**API:** Overpass API
+- Primary: `https://overpass-api.de/api/interpreter`
+- Alternate: `https://overpass.kumi.systems/api/interpreter`
+
+**Query Capabilities:**
+- Power infrastructure (cables, substations, plants, transformers)
+- Water features (canals, rivers, bridges)
+- Access routes (highways, paths, footways)
+- Buildings and cover (industrial, vegetation, parking)
+- Surveillance and security (cameras, barriers, lighting)
+
+**OSINT Value:**
+- Infrastructure vulnerability assessment
+- Access/egress route mapping
+- Security posture analysis (cameras, lighting gaps)
+- Barrier and fence identification
+- Named feature discovery with coordinates
+
+**Bounding Box Format:** `south,west,north,east` (lat,lon,lat,lon)
+
+**Rate Limits:** Overpass may timeout on large queries. Use smaller bounding boxes or simpler queries.
+
+**Tool:** `execution/osm_poi_analysis.py`
+
+---
+
 ## Continuous Learning
 
 **Update This SOP When:**
@@ -266,4 +294,4 @@ Each report folder should contain:
 ---
 
 *Last Updated: 2026-02-03*
-*Version: 2.2 - Added Sports Tracker and OpenStreetMap GPS Traces sections*
+*Version: 2.3 - Added OSM POI/Infrastructure Analysis section*
