@@ -91,10 +91,68 @@ def normalize_document(raw_doc, filename, valid_timestamp, report_id):
         
     return normalized_docs
 
+def ensure_index_exists(es, index_name):
+    """
+    Create index with proper mappings if it doesn't exist.
+    """
+    if es.indices.exists(index=index_name):
+        logging.info(f"Index {index_name} already exists")
+        return True
+    
+    # Define index mappings per SOP schema
+    index_mapping = {
+        "mappings": {
+            "properties": {
+                "timestamp": {"type": "date"},
+                "source_file": {"type": "keyword"},
+                "source_type": {"type": "keyword"},
+                "data_type": {"type": "keyword"},
+                "title": {"type": "text", "fields": {"keyword": {"type": "keyword"}}},
+                "body": {"type": "text"},
+                "url": {"type": "keyword"},
+                "uri": {"type": "keyword"},
+                "source": {"type": "keyword"},
+                "date": {"type": "date"},
+                "author": {"type": "keyword"},
+                "lang": {"type": "keyword"},
+                "entities": {
+                    "properties": {
+                        "person": {"type": "keyword"},
+                        "organization": {"type": "keyword"},
+                        "location": {"type": "keyword"},
+                        "position": {"type": "keyword"}
+                    }
+                },
+                "metadata": {"type": "object", "enabled": True},
+                "russian_contacts": {"type": "object", "enabled": True},
+                "criminal_allegations": {"type": "object", "enabled": True},
+                "intelligence_allegations": {"type": "object", "enabled": True},
+                "public_statements": {"type": "text"},
+                "sources": {"type": "keyword"},
+                "report_id": {"type": "keyword"},
+                "collection_date": {"type": "date"},
+                "raw_source": {"type": "object", "enabled": False}
+            }
+        },
+        "settings": {
+            "number_of_shards": 1,
+            "number_of_replicas": 1
+        }
+    }
+    
+    try:
+        es.indices.create(index=index_name, body=index_mapping)
+        logging.info(f"Created index {index_name} with mappings")
+        return True
+    except Exception as e:
+        logging.error(f"Failed to create index {index_name}: {e}")
+        return False
+
 def ingest_directory(base_dir, es, index_prefix):
     logging.info(f"Scanning {base_dir} for raw data...")
     
     docs_to_index = []
+    indices_to_create = set()
     
     for root, dirs, files in os.walk(base_dir):
         if "raw_data" in root:
@@ -109,6 +167,7 @@ def ingest_directory(base_dir, es, index_prefix):
                 report_ts = datetime.now().strftime("%Y%m%d_%H%M%S")
             
             index_name = f"{index_prefix}{report_ts}".lower()
+            indices_to_create.add(index_name)
 
             for file in files:
                 if file.endswith(".json"):
@@ -132,10 +191,31 @@ def ingest_directory(base_dir, es, index_prefix):
                     except Exception as e:
                         logging.error(f"Failed to process {filepath}: {e}")
 
+    # Create all required indices before ingestion
+    for index_name in indices_to_create:
+        ensure_index_exists(es, index_name)
+
     if docs_to_index:
-        logging.info(f"Ingesting {len(docs_to_index)} documents...")
-        success, failed = helpers.bulk(es, docs_to_index, stats_only=True)
-        logging.info(f"Ingestion complete. Success: {success}, Failed: {failed}")
+        logging.info(f"Ingesting {len(docs_to_index)} documents into {len(indices_to_create)} index(es)...")
+        try:
+            success, errors = helpers.bulk(es, docs_to_index, stats_only=False, raise_on_error=False)
+            
+            if errors:
+                logging.error(f"Bulk ingestion completed with errors. Success: {success}, Failed: {len(errors)}")
+                # Log first few errors for debugging
+                for i, error in enumerate(errors[:5]):
+                    if 'index' in error:
+                        doc_id = error['index'].get('_id', 'unknown')
+                        error_msg = error['index'].get('error', {})
+                        error_type = error_msg.get('type', 'unknown')
+                        error_reason = error_msg.get('reason', 'unknown')
+                        logging.error(f"  Failed doc {i+1} (ID: {doc_id}): {error_type} - {error_reason}")
+                if len(errors) > 5:
+                    logging.error(f"  ... and {len(errors) - 5} more errors")
+            else:
+                logging.info(f"Ingestion complete. Success: {success}, Failed: 0")
+        except Exception as e:
+            logging.error(f"Bulk ingestion failed: {e}")
     else:
         logging.info("No documents found to ingest.")
 
@@ -156,3 +236,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
