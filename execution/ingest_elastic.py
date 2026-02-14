@@ -63,12 +63,189 @@ def get_es_client(env):
 def generate_doc_id(content_str):
     return hashlib.sha256(content_str.encode('utf-8')).hexdigest()
 
+def normalize_serp_api_data(raw_doc, filename, report_id):
+    """
+    Normalize SERP API JSON data (Google search results).
+    Extracts organic results, social media posts, and all URLs.
+    """
+    normalized_docs = []
+    
+    # Extract search metadata
+    search_query = raw_doc.get("search_parameters", {}).get("q", "")
+    search_location = raw_doc.get("search_parameters", {}).get("location_used", "")
+    
+    # Process organic search results
+    organic_results = raw_doc.get("organic_results", [])
+    for idx, result in enumerate(organic_results):
+        doc = {
+            "timestamp": datetime.now().isoformat(),
+            "source_file": filename,
+            "source_type": "serp_api",
+            "data_type": "organic_result",
+            "title": result.get("title", ""),
+            "body": result.get("snippet", ""),
+            "url": result.get("link", ""),
+            "redirect_url": result.get("redirect_link", ""),
+            "displayed_link": result.get("displayed_link", ""),
+            "source": result.get("source", ""),
+            "position": result.get("position", idx + 1),
+            "date": result.get("date", ""),
+            "search_query": search_query,
+            "search_location": search_location,
+            "favicon": result.get("favicon", ""),
+            "thumbnail": result.get("thumbnail", ""),
+            "video_link": result.get("video_link", ""),
+            "duration": result.get("duration", ""),
+            "raw_source": result,
+            "report_id": report_id,
+            "_id": generate_doc_id(json.dumps(result, sort_keys=True))
+        }
+        normalized_docs.append(doc)
+    
+    # Process related questions (AI overviews, featured snippets)
+    related_questions = raw_doc.get("related_questions", [])
+    for idx, question in enumerate(related_questions):
+        doc = {
+            "timestamp": datetime.now().isoformat(),
+            "source_file": filename,
+            "source_type": "serp_api",
+            "data_type": "related_question",
+            "title": question.get("question", ""),
+            "body": question.get("snippet", ""),
+            "url": question.get("link", ""),
+            "source": question.get("source", ""),
+            "question_type": question.get("type", ""),
+            "search_query": search_query,
+            "search_location": search_location,
+            "raw_source": question,
+            "report_id": report_id,
+            "_id": generate_doc_id(json.dumps(question, sort_keys=True))
+        }
+        normalized_docs.append(doc)
+    
+    # Process related searches
+    related_searches = raw_doc.get("related_searches", [])
+    for idx, search in enumerate(related_searches):
+        doc = {
+            "timestamp": datetime.now().isoformat(),
+            "source_file": filename,
+            "source_type": "serp_api",
+            "data_type": "related_search",
+            "title": search.get("query", ""),
+            "url": search.get("link", ""),
+            "search_query": search_query,
+            "search_location": search_location,
+            "raw_source": search,
+            "report_id": report_id,
+            "_id": generate_doc_id(json.dumps(search, sort_keys=True))
+        }
+        normalized_docs.append(doc)
+    
+    return normalized_docs
+
+def normalize_telegram_osint_data(raw_doc, filename, report_id):
+    """
+    Normalize Telegram OSINT JSON data.
+    """
+    normalized_docs = []
+    
+    # Extract search metadata
+    search_queries = raw_doc.get("search_queries", [])
+    channels_searched = raw_doc.get("channels_searched", [])
+    
+    # Process messages
+    messages = raw_doc.get("messages", [])
+    for idx, message in enumerate(messages):
+        doc = {
+            "timestamp": datetime.now().isoformat(),
+            "source_file": filename,
+            "source_type": "telegram",
+            "data_type": "message",
+            "title": f"Telegram message from {message.get('sender_id', 'unknown')}",
+            "body": message.get("message", ""),
+            "url": f"telegram://channel/{message.get('channel', 'unknown')}/{message.get('id', 'unknown')}",
+            "channel": message.get("channel", ""),
+            "sender_id": message.get("sender_id", ""),
+            "date": message.get("date", ""),
+            "search_queries": search_queries,
+            "channels_searched": channels_searched,
+            "raw_source": message,
+            "report_id": report_id,
+            "_id": generate_doc_id(json.dumps(message, sort_keys=True))
+        }
+        normalized_docs.append(doc)
+    
+    # If no messages, create a summary document
+    if not messages:
+        doc = {
+            "timestamp": datetime.now().isoformat(),
+            "source_file": filename,
+            "source_type": "telegram",
+            "data_type": "search_summary",
+            "title": "Telegram OSINT Search Summary",
+            "body": f"Searched {len(channels_searched)} channels with {len(search_queries)} queries. No messages found.",
+            "search_queries": search_queries,
+            "channels_searched": channels_searched,
+            "messages_found": 0,
+            "raw_source": raw_doc,
+            "report_id": report_id,
+            "_id": generate_doc_id(json.dumps(raw_doc, sort_keys=True))
+        }
+        normalized_docs.append(doc)
+    
+    return normalized_docs
+
+def normalize_comprehensive_report(raw_doc, filename, report_id):
+    """
+    Normalize comprehensive OSINT report JSON data.
+    """
+    normalized_docs = []
+    
+    # Create main report document
+    doc = {
+        "timestamp": datetime.now().isoformat(),
+        "source_file": filename,
+        "source_type": "osint_report",
+        "data_type": "comprehensive_report",
+        "title": f"OSINT Report: {raw_doc.get('case_name', 'Unknown')}",
+        "body": json.dumps(raw_doc.get("critical_assessments", {}), indent=2),
+        "investigation_id": raw_doc.get("investigation_id", ""),
+        "case_name": raw_doc.get("case_name", ""),
+        "investigation_phases": raw_doc.get("investigation_phases", {}),
+        "critical_assessments": raw_doc.get("critical_assessments", {}),
+        "bka_recommendations": raw_doc.get("bka_recommendations", []),
+        "hypothesis_support": raw_doc.get("hypothesis_support", ""),
+        "data_sources": raw_doc.get("data_sources", []),
+        "artifacts_created": raw_doc.get("artifacts_created", []),
+        "raw_source": raw_doc,
+        "report_id": report_id,
+        "_id": generate_doc_id(json.dumps(raw_doc, sort_keys=True))
+    }
+    normalized_docs.append(doc)
+    
+    return normalized_docs
+
 def normalize_document(raw_doc, filename, valid_timestamp, report_id):
     """
     Normalize different raw data formats into the SOP schema.
-    Assumes list of items (NewsAPI) or single dict.
+    Detects data type and routes to appropriate normalization function.
     """
     normalized_docs = []
+    
+    # Detect SERP API data (Google search results)
+    if isinstance(raw_doc, dict) and "search_parameters" in raw_doc and "organic_results" in raw_doc:
+        logging.info(f"  Detected SERP API data in {filename}")
+        return normalize_serp_api_data(raw_doc, filename, report_id)
+    
+    # Detect Telegram OSINT data
+    if isinstance(raw_doc, dict) and ("search_queries" in raw_doc or "channels_searched" in raw_doc):
+        logging.info(f"  Detected Telegram OSINT data in {filename}")
+        return normalize_telegram_osint_data(raw_doc, filename, report_id)
+    
+    # Detect comprehensive OSINT report
+    if isinstance(raw_doc, dict) and "investigation_phases" in raw_doc and "critical_assessments" in raw_doc:
+        logging.info(f"  Detected comprehensive OSINT report in {filename}")
+        return normalize_comprehensive_report(raw_doc, filename, report_id)
     
     # Handle list of articles (NewsAPI format)
     if isinstance(raw_doc, list):
@@ -120,7 +297,7 @@ def ensure_index_exists(es, index_name):
         logging.info(f"Index {index_name} already exists")
         return True
     
-    # Define index mappings per SOP schema
+    # Define index mappings per SOP schema + OSINT-specific fields
     index_mapping = {
         "mappings": {
             "properties": {
@@ -131,11 +308,34 @@ def ensure_index_exists(es, index_name):
                 "title": {"type": "text", "fields": {"keyword": {"type": "keyword"}}},
                 "body": {"type": "text"},
                 "url": {"type": "keyword"},
+                "redirect_url": {"type": "keyword"},
+                "displayed_link": {"type": "keyword"},
                 "uri": {"type": "keyword"},
                 "source": {"type": "keyword"},
-                "date": {"type": "date"},
+                "date": {"type": "date", "ignore_malformed": True},
                 "author": {"type": "keyword"},
                 "lang": {"type": "keyword"},
+                "position": {"type": "integer"},
+                "search_query": {"type": "text"},
+                "search_location": {"type": "keyword"},
+                "favicon": {"type": "keyword"},
+                "thumbnail": {"type": "keyword"},
+                "video_link": {"type": "keyword"},
+                "duration": {"type": "keyword"},
+                "question_type": {"type": "keyword"},
+                "channel": {"type": "keyword"},
+                "sender_id": {"type": "keyword"},
+                "search_queries": {"type": "keyword"},
+                "channels_searched": {"type": "keyword"},
+                "messages_found": {"type": "integer"},
+                "investigation_id": {"type": "keyword"},
+                "case_name": {"type": "text"},
+                "investigation_phases": {"type": "object", "enabled": True},
+                "critical_assessments": {"type": "object", "enabled": True},
+                "bka_recommendations": {"type": "text"},
+                "hypothesis_support": {"type": "text"},
+                "data_sources": {"type": "keyword"},
+                "artifacts_created": {"type": "keyword"},
                 "entities": {
                     "properties": {
                         "person": {"type": "keyword"},
@@ -176,8 +376,9 @@ def ingest_directory(base_dir, es, index_prefix):
     indices_to_create = set()
     
     for root, dirs, files in os.walk(base_dir):
-        if "raw_data" in root:
-            # Extract report ID from path (parent of raw_data)
+        # Process both raw_data and osint_construction directories
+        if "raw_data" in root or "osint_construction" in root:
+            # Extract report ID from path (parent of raw_data/osint_construction)
             report_id = os.path.basename(os.path.dirname(root))
             
             # Use report timestamp for index name if possible, else current

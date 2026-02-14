@@ -219,3 +219,14 @@ sociallab/*
 .DS_Store
 
 
+pdfs/*
+*.pdf
+
+deliverables/*
+
+*.session
+
+.DS_Store*
+
+
+
