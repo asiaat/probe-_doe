@@ -338,7 +338,7 @@ async def main():
     print(f"    Berlin Construction: {len(BERLIN_CONSTRUCTION_QUERIES)}")
     print("=" * 70)
 
-    client = TelegramClient('phone_search_session', int(API_ID), API_HASH)
+    client = TelegramClient('osint_session', int(API_ID), API_HASH)
     await client.start(phone=PHONE)
     print("[+] Telegram client authenticated\n")
 
